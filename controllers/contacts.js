@@ -35,7 +35,7 @@ const postContacts = async (req, res, next) => {
   try {
     const { error } = schema.validate(req.body);
     if (error) {
-      throw HttpError(400, error.message);
+    throw HttpError(400, `missing required ${error.message.slice(1, 6)} field` );
     }
     const result = await contacts.addContact(req.body);
     res.status(201).json(result);
@@ -59,7 +59,7 @@ const DeleteContacts = async (req, res, next) => {
 
 const putContacts = async (req, res, next) => {
   try {
-    const { contactId } = req.params;
+    const { id } = req.params;
     const { value } = schema.validate(req.body);
 
     if (JSON.stringify(value) === "{}") {
@@ -73,7 +73,7 @@ const putContacts = async (req, res, next) => {
       }
     }
 
-    const result = await contacts.updateContact(contactId, req.body);
+    const result = await contacts.updateContact(id, req.body);
     if (!result) {
       throw HttpError(404, "Not found");
     }
