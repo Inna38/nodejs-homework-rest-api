@@ -35,7 +35,7 @@ const postContacts = async (req, res, next) => {
   try {
     const { error } = schema.validate(req.body);
     if (error) {
-    throw HttpError(400, `missing required ${error.message.slice(1, 6)} field` );
+    throw HttpError(400, `missing required ${error.message.split(' ', 1)} field`);
     }
     const result = await contacts.addContact(req.body);
     res.status(201).json(result);
