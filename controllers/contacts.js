@@ -69,7 +69,7 @@ const putContacts = async (req, res, next) => {
     if (JSON.stringify(value) !== "{}") {
       const { error } = schema.validate(req.body);
       if (error) {
-        throw HttpError(404, error.message);
+       throw HttpError(400, `missing required ${error.message.split(' ', 1)} field`);
       }
     }
 
