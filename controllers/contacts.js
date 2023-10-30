@@ -1,6 +1,14 @@
 const Book = require("../models/contact");
 const { HttpError } = require("../helpers");
 
+const updateStatusContact = async (id, body) => {
+  const result = await Book.Contact.findByIdAndUpdate(id, body, {
+    new: true,
+  });
+  return result;
+};
+
+
 const getContacts = async (_, res) => {
   try {
     const results = await Book.Contact.find();
@@ -71,9 +79,8 @@ const putContacts = async (req, res, next) => {
       }
     }
 
-    const result = await Book.Contact.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
+    const result = await updateStatusContact(id, req.body)
+    
     if (!result) {
       throw HttpError(404, "Not found");
     }
@@ -93,9 +100,7 @@ const patchContacts = async (req, res, next) => {
       return;
     }
 
-    const result = await Book.Contact.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
+    const result = await updateStatusContact(id, req.body)
 
     if (!result) {
       HttpError(400, " Not found ");
