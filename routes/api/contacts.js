@@ -11,6 +11,7 @@ const {
   putContacts,
   patchContacts,
   deleteContacts,
+  patchFavorite,
 } = require("../../controllers/contacts");
 
 router.get("/", authenticate, getContacts);
@@ -24,5 +25,7 @@ router.delete("/:id", authenticate, isValidId, deleteContacts);
 router.put("/:id", authenticate,  isValidId, putContacts);
 
 router.patch("/:id/favorite", authenticate, isValidId, patchContacts);
+
+router.patch("/favorite", authenticate, patchFavorite);
 
 module.exports = router;
