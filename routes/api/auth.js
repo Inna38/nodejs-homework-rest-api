@@ -9,11 +9,11 @@ const {
   patchSubscription,
 } = require("../../controllers/auth");
 
-const { authenticate} = require("../../middlewares");
+const { authenticate } = require("../../middlewares");
 
 router.post("/users/register", register);
 router.post("/users/login", login);
-router.post("/users/current", authenticate, getCurrent);
+router.get("/users/current", authenticate, getCurrent);
 router.post("/users/logout", authenticate, logout);
 router.patch("/users/subscription", authenticate,  patchSubscription)
 

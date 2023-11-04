@@ -35,8 +35,7 @@ const register = async (req, res, next) => {
     });
 
     res.status(201).json({
-      email: result.email,
-      subscription: result.subscription,
+      user: { email: result.email, subscription: result.subscription },
     });
   } catch (error) {
     next(error);
@@ -71,9 +70,8 @@ const login = async (req, res, next) => {
     await User.findByIdAndUpdate(user._id, { token });
 
     res.status(200).json({
-      token,
-      email,
-      subscription: user.subscription,
+      token: token,
+      user: { email, subscription: user.subscription },
     });
   } catch (error) {
     next(error);
