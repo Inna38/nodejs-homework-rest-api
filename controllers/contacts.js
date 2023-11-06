@@ -8,9 +8,12 @@ const updateStatusContact = async (id, body) => {
   return result;
 };
 
-const getContacts = async (_, res) => {
+const getContacts = async (req, res) => {
   try {
-    const results = await Contact.Contact.find();
+    const { _id: owner } = req.user;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+    const results = await Contact.Contact.find({ owner }, "", { skip, limit });
     res.json(results);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
@@ -32,6 +35,7 @@ const getContactsById = async (req, res, next) => {
 
 const postContacts = async (req, res, next) => {
   try {
+    const { _id: owner } = req.user;
     const { error } = Contact.schema.validate(req.body);
     if (error) {
       throw HttpError(
@@ -39,7 +43,7 @@ const postContacts = async (req, res, next) => {
         `missing required ${error.message.split(" ", 1)} field`
       );
     }
-    const result = await Contact.Contact.create(req.body);
+    const result = await Contact.Contact.create({ ...req.body, owner });
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -101,24 +105,28 @@ const patchContacts = async (req, res, next) => {
 
     if (JSON.stringify(value) !== "{}") {
       const { error } = Contact.updateFavoriteSchema.validate(req.body);
-        
+
       if (error) {
-        throw HttpError(
-          400,
-          `${error.message} field`
-        );
+        throw HttpError(400, `${error.message} field`);
       }
-  }
+    }
 
     const result = await updateStatusContact(id, req.body);
 
     if (!result) {
-      HttpError(400, " Not found ");
+      throw HttpError(400, "Not found");
     }
     res.status(200).json(result);
   } catch (error) {
     next(error);
   }
+};
+
+const patchFavorite = async (req, res, next) => {
+  const { favorite = true } = req.query;
+  const result = await Contact.Contact.find({ favorite });
+
+  res.json(result);
 };
 
 module.exports = {
@@ -128,4 +136,5 @@ module.exports = {
   deleteContacts,
   putContacts,
   patchContacts,
+  patchFavorite,
 };
