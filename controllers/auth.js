@@ -1,5 +1,9 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
+const path = require("path");
+const fs = require("fs/promises");
+const jimp = require("jimp");
 
 const {
   User,
@@ -11,6 +15,7 @@ const { HttpError } = require("../helpers");
 
 const SECRET_KEY = `${process.env.SECRET_KEY}`;
 const saltRounds = 10;
+const avatarsDir = path.join(__dirname, "../", "public", "avatars");
 
 const register = async (req, res, next) => {
   try {
@@ -28,10 +33,12 @@ const register = async (req, res, next) => {
     }
 
     const createHashPassword = await bcrypt.hash(password, saltRounds);
+    const avatarURL = gravatar.url(email);
 
     const result = await User.create({
       ...req.body,
       password: createHashPassword,
+      avatarURL,
     });
 
     res.status(201).json({
@@ -124,10 +131,33 @@ const logout = async (req, res, next) => {
   res.status(204).json({ message: "No Content" });
 };
 
+const patchAvatar = async (req, res, next) => {
+  try {
+    const { _id } = req.user;
+    const { path: tempUpload, originalname } = req.file;
+    const fileName = `${_id}_${originalname}`;
+    const resultUpload = path.join(avatarsDir, fileName);
+    await fs.rename(tempUpload, resultUpload);
+    const avatarURL = path.join("avatars", fileName);
+    await User.findByIdAndUpdate(_id, { avatarURL });
+
+    const image = await jimp.read(`public/${avatarURL}`);
+    await image.resize(250, 250);
+    await image.writeAsync(`public/${avatarURL}`);
+
+    res.json({
+      avatarURL,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   getCurrent,
   logout,
   patchSubscription,
+  patchAvatar,
 };
