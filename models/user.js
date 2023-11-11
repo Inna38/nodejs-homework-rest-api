@@ -24,6 +24,15 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
+    verify: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+      default: "",
+      required: true,
+    },
   },
   { versionKey: false }
 );
@@ -45,11 +54,16 @@ const updateSubscriptionSchema = Joi.object({
   subscription: Joi.string().valid("starter", "pro", "business").required(),
 });
 
+const emailShema = Joi.object({
+  email: Joi.string().required(),
+});
+
 module.exports = {
   User,
   registerSchema,
   loginSchema,
   updateSubscriptionSchema,
+  emailShema,
 };
 
 userSchema.post("save", handleMongooseError);
