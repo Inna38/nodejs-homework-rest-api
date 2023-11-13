@@ -5,6 +5,15 @@ const path = require("path");
 const fs = require("fs/promises");
 const jimp = require("jimp");
 const { nanoid } = require("nanoid");
+const ElasticEmail = require("@elasticemail/elasticemail-client");
+
+const defaultClient = ElasticEmail.ApiClient.instance;
+
+const { apikey } = defaultClient.authentications;
+apikey.apiKey =
+  "EB645B58BD3774CBFA45DB4CF7264DDE685A76A8A52D4D3AE48E08FA4A0AD7D15759F11049FA5BADBB8989590D1D07E3";
+
+const api = new ElasticEmail.EmailsApi();
 
 const {
   User,
@@ -48,13 +57,28 @@ const register = async (req, res, next) => {
       verificationToken,
     });
 
-    const verifyEmail = {
-      to: email,
-      subject: "Verify email",
-      html: `<a href="${BASE_URL}/users/verify/${verificationToken}">Verify email</a>`,
-    };
+    const verifyEmail = ElasticEmail.EmailMessageData.constructFromObject({
+      Recipients: [new ElasticEmail.EmailRecipient(`${email}`)],
+      Content: {
+        Body: [
+          ElasticEmail.BodyPart.constructFromObject({
+            ContentType: "HTML",
+            Content: `<a href="${BASE_URL}/users/verify/${verificationToken}">Verify email</a>`,
+          }),
+        ],
+        Subject: "Test email",
+           From: "innadidenko29@gmail.com"
+      },
+    });
 
-    await sendEmail(verifyEmail);
+    const callback = function (error, data, response) {
+      if (error) {
+        console.error(error);
+      } else {
+        console.log("API called successfully.");
+      }
+    };
+    api.emailsPost(verifyEmail, callback);
 
     res.status(201).json({
       user: { email: result.email, subscription: result.subscription },
