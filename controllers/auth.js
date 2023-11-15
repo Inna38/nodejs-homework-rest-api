@@ -4,18 +4,27 @@ const gravatar = require("gravatar");
 const path = require("path");
 const fs = require("fs/promises");
 const jimp = require("jimp");
+const { nanoid } = require("nanoid");
+const ElasticEmail = require("@elasticemail/elasticemail-client");
+require("dotenv").config();
 
 const {
   User,
   registerSchema,
+  emailShema,
   loginSchema,
   updateSubscriptionSchema,
 } = require("../models/user");
-const { HttpError } = require("../helpers");
+const { HttpError, sendEmail } = require("../helpers");
 
 const SECRET_KEY = `${process.env.SECRET_KEY}`;
+const BASE_URL = `${process.env.BASE_URL}`;
+const EMAIL_FROM = `${process.env.EMAIL_FROM}`;
+
 const saltRounds = 10;
 const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+
+const verificationToken = nanoid();
 
 const register = async (req, res, next) => {
   try {
@@ -39,7 +48,24 @@ const register = async (req, res, next) => {
       ...req.body,
       password: createHashPassword,
       avatarURL,
+      verificationToken,
     });
+
+    const verifyEmail = ElasticEmail.EmailMessageData.constructFromObject({
+      Recipients: [new ElasticEmail.EmailRecipient(`${email}`)],
+      Content: {
+        Body: [
+          ElasticEmail.BodyPart.constructFromObject({
+            ContentType: "HTML",
+            Content: `<a href="${BASE_URL}/users/verify/${verificationToken}" target="_blank">Verify email</a>`,
+          }),
+        ],
+        Subject: "Test email",
+        From: EMAIL_FROM,
+      },
+    });
+
+    await sendEmail(verifyEmail);
 
     res.status(201).json({
       user: { email: result.email, subscription: result.subscription },
@@ -47,6 +73,68 @@ const register = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+const verifyEmail = async (req, res) => {
+  const { verificationToken } = req.params;
+
+  const user = await User.findOne({ verificationToken });
+
+  if (!user) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  await User.findByIdAndUpdate(user._id, {
+    verificationToken: "",
+    verify: true,
+  });
+
+  res.status(200).json({
+    message: "Verification successful",
+  });
+};
+
+const resendVerifyEmail = async (req, res) => {
+  const { error } = emailShema.validate(req.body);
+  const { email } = req.body;
+
+  if (error) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404).json({ message: "Email not found" });
+    return;
+  }
+
+  if (user.verify) {
+    res.status(400).json({ message: "Verification has already been passed" });
+    return;
+  }
+
+  const verifyEmail = ElasticEmail.EmailMessageData.constructFromObject({
+    Recipients: [new ElasticEmail.EmailRecipient(`${email}`)],
+    Content: {
+      Body: [
+        ElasticEmail.BodyPart.constructFromObject({
+          ContentType: "HTML",
+          Content: `<a href="${BASE_URL}/users/verify/${verificationToken}" target="_blank">Verify email</a>`,
+        }),
+      ],
+      Subject: "Test email",
+      From: EMAIL_FROM,
+    },
+  });
+
+  await sendEmail(verifyEmail);
+
+  res.status(200).json({
+    message: "Verification email sent",
+  });
 };
 
 const login = async (req, res, next) => {
@@ -61,6 +149,10 @@ const login = async (req, res, next) => {
     const user = await User.findOne({ email });
     if (!user) {
       throw HttpError(401, "Email or password is wrong");
+    }
+
+    if (!user.verify) {
+      throw HttpError(401, "Email not verify");
     }
 
     const comparePassword = await bcrypt.compare(password, user.password);
@@ -155,6 +247,8 @@ const patchAvatar = async (req, res, next) => {
 
 module.exports = {
   register,
+  verifyEmail,
+  resendVerifyEmail,
   login,
   getCurrent,
   logout,
